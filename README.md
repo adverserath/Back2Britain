@@ -45,8 +45,6 @@ First step, make a backup of the entire UO directory first. Its the easiest way 
 
 Patch UO:2D by running UOPatch.exe, this will download the latest file.
 
-![image](https://github.com/user-attachments/assets/fa6915e3-d8d9-4a4a-8f24-95b45e475659)
-
 Move all these files from the build into the UO Directory. Ideally I'll get this compiled into a single file executable for cleanliness.
 
 Run **Back2Britain.exe**.
