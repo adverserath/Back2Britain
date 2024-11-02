@@ -7,6 +7,7 @@ UOFiddler and Orion both do not have the Bwt decompression built in, but CUO doe
 The **cliloc** files, are loaded in their entirety into Bwt and written back out. This was easy, like 10 minutes effort.
 The **gumpartLegacyMUL.uop** was much more complex to work out, and took me about 15 hours of effort to get right.
 The file structure is as follows:
+```
       uInt32 : MagicNumber
       uInt32 : Version
       uInt32 : timestamp
@@ -33,7 +34,7 @@ The file structure is as follows:
           ---end loop---
         ---Seek next Chunk---
       ---end loop---
-
+```
 <H3>What really going on?</H3>
 Then the data taken out of this file is decompressed with the normal ZLib method, then decompressed again using Bwt. Then we pull out the height and width of the gumps and save them into the right place. We set the flag back to 1, and do bit of number crunching to work out the new data offsets and chunk positions.
 Starting positions of the data dont really matter here, because as long as the structure above is followed it all just works. The original files are zipped into a <b>backup</b> directory, and the decompressed files are written in their place.
@@ -41,9 +42,11 @@ Starting positions of the data dont really matter here, because as long as the s
 <H2>Setup</H2>
 First step, make a backup of the entire UO directory first. Its the easiest way to role back if you have issues.
 ![image](https://github.com/user-attachments/assets/19b8211d-0891-4e83-a77c-d8e5fe627dbd)
+
 Patch UO:2D by running UOPatch.exe, this will download the latest file.
 
 ![image](https://github.com/user-attachments/assets/fa6915e3-d8d9-4a4a-8f24-95b45e475659)
+
 Move all these files from the build into the UO Directory. Ideally I'll get this compiled into a single file executable for cleanliness.
 
 Run **Back2Britain.exe**.
