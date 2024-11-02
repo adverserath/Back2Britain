@@ -1,30 +1,49 @@
 ﻿using Back2Britain;
-String dir = String.Empty;
+using Back2Britain.Utility;
 
-
-DirectoryInfo uo = new DirectoryInfo(Directory.GetCurrentDirectory());
-
-uo.CreateSubdirectory("backup").Delete(true);
-uo.CreateSubdirectory("backup");
-
-foreach (var item in uo.EnumerateFiles("cliloc.*"))
+void ProcessDirectory()
 {
-    Cliloc.ReadCliloc(item, dir);
-}
+    DirectoryInfo uo = new DirectoryInfo(Directory.GetCurrentDirectory());
 
-foreach (var item in uo.EnumerateFiles("gumpartLegacyMUL.uop"))
-{
-    CustomUOFile? gumpData = null;
+    Console.WriteLine("Directory: " + uo.FullName);
+    uo.CreateSubdirectory("backup");
+    Thread.Sleep(1000);
 
-    using (FileStream fs = new FileStream(item.FullName, FileMode.Open))
+    List<string> files = uo.EnumerateFiles("cliloc.*").Select(x => x.FullName).ToList();
+    files.AddRange(
+        uo.EnumerateFiles("gumpartLegacyMUL.uop").Select(x => x.FullName).ToList()
+        );
+    ZipFiles.Zip(files, uo.FullName + $"\\backup\\compressed-{DateTime.Now.Ticks}.zip");
+
+
+    foreach (var item in uo.EnumerateFiles("cliloc.*"))
     {
-        gumpData = new CustomUOFile(fs, item, true);
+        Cliloc.ReadCliloc(item);
+    }
+
+    foreach (var item in uo.EnumerateFiles("gumpartLegacyMUL.uop"))
+    {
+        CustomUOFile? gumpData = null;
+
+        using (FileStream fs = new FileStream(item.FullName, FileMode.Open))
+        {
+            gumpData = new CustomUOFile(fs, item, true);
+
+        }
+        gumpData.ProcessFile();
 
     }
-    gumpData.ProcessFile();
+    Console.WriteLine(Environment.NewLine + "---Complete---");
+    Console.ReadLine();
 
 }
-Console.WriteLine("---Complete---");
-Console.ReadLine();
 
-
+try
+{
+    ProcessDirectory();
+}
+catch (Exception)
+{
+    throw;
+}
+finally {  Console.Read(); }

@@ -127,7 +127,6 @@ namespace Back2Britain
             if (_hashes.Count > 0)
             {
                 Decompress();
-                _fileInfo.MoveTo(_fileInfo.Directory + "\\backup\\" + _fileInfo.Name);
                 RecalculateData();
                 WriteNewFile();
             }
@@ -166,14 +165,17 @@ namespace Back2Britain
             block_size = 100;
             //startingBlock = 2400;
             version = 5;
-            FileStream oldFile = new FileStream(_fileInfo.Directory + _fileInfo.Name, FileMode.Create);
-            oldFile.Write(System.BitConverter.GetBytes(UOP_MAGIC_NUMBER));
-            oldFile.Write(System.BitConverter.GetBytes(version));
-            oldFile.Write(System.BitConverter.GetBytes(format_timestamp));
-            oldFile.Write(System.BitConverter.GetBytes(startingBlock));
-            oldFile.Write(System.BitConverter.GetBytes(block_size));
-            oldFile.Write(System.BitConverter.GetBytes(count));
-            oldFile.Seek(startingBlock, SeekOrigin.Begin);
+            string newFileLocation = Path.Combine(_fileInfo.Directory.FullName, _fileInfo.Name);
+            Console.WriteLine($"Writing {newFileLocation}");
+
+            FileStream decompressedFile = new FileStream(newFileLocation, FileMode.Create);
+            decompressedFile.Write(System.BitConverter.GetBytes(UOP_MAGIC_NUMBER));
+            decompressedFile.Write(System.BitConverter.GetBytes(version));
+            decompressedFile.Write(System.BitConverter.GetBytes(format_timestamp));
+            decompressedFile.Write(System.BitConverter.GetBytes(startingBlock));
+            decompressedFile.Write(System.BitConverter.GetBytes(block_size));
+            decompressedFile.Write(System.BitConverter.GetBytes(count));
+            decompressedFile.Seek(startingBlock, SeekOrigin.Begin);
 
             int batchSize = 100;
             int skip = 0;
@@ -197,71 +199,71 @@ namespace Back2Britain
             {
                 Loader.DisplayLoadingBar("Writing New File ", currentCount++, chunks.Count);
 
-                oldFile.Seek(lastBlock, SeekOrigin.Begin);  //Goto chunk start
-                oldFile.Write(System.BitConverter.GetBytes(chunk.Count)); //Write Count of chunk
+                decompressedFile.Seek(lastBlock, SeekOrigin.Begin);  //Goto chunk start
+                decompressedFile.Write(System.BitConverter.GetBytes(chunk.Count)); //Write Count of chunk
                 if (chunks.Last() != chunk)  //Write last chunk as 0 if end
                 {
-                    nextBlockPos = oldFile.Position;   //Record placeholder to update next chunk at the end
-                    oldFile.Write(System.BitConverter.GetBytes(startingBlock));
+                    nextBlockPos = decompressedFile.Position;   //Record placeholder to update next chunk at the end
+                    decompressedFile.Write(System.BitConverter.GetBytes(startingBlock));
                 }
                 else
                 {
-                    oldFile.Write(System.BitConverter.GetBytes(0));
+                    decompressedFile.Write(System.BitConverter.GetBytes(0));
                 }
 
                 foreach (Block item in chunk.Blocks)
                 {
                     if (_hasExtra && item.Flag != 3)
                     {
-                        oldFile.Write(System.BitConverter.GetBytes(item.Offset));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Offset));
                         //oldFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.CompressedLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.DecompressedLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Hash));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Data_Hash));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Flag));
-                        long pos = oldFile.Position;
-                        oldFile.Seek(item.Offset + item.HeaderLength, SeekOrigin.Begin);
-                        oldFile.Write(System.BitConverter.GetBytes(item.Extra1));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Extra2));
-                        oldFile.Write(item.Data);
-                        lastBlock = oldFile.Position;
-                        oldFile.Seek(pos, SeekOrigin.Begin);
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.CompressedLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.DecompressedLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Hash));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Data_Hash));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Flag));
+                        long pos = decompressedFile.Position;
+                        decompressedFile.Seek(item.Offset + item.HeaderLength, SeekOrigin.Begin);
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Extra1));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Extra2));
+                        decompressedFile.Write(item.Data);
+                        lastBlock = decompressedFile.Position;
+                        decompressedFile.Seek(pos, SeekOrigin.Begin);
                     }
                     else
                     {
-                        oldFile.Write(System.BitConverter.GetBytes(item.Offset - item.HeaderLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.CompressedLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.DecompressedLength));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Hash));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Data_Hash));
-                        oldFile.Write(System.BitConverter.GetBytes(item.Flag));
-                        long pos = oldFile.Position;
-                        oldFile.Seek(item.Offset - item.HeaderLength, SeekOrigin.Begin);
-                        oldFile.Write(item.Header);
-                        oldFile.Write(item.Data);
-                        lastBlock = oldFile.Position;
-                        oldFile.Seek(pos, SeekOrigin.Begin);
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Offset - item.HeaderLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.CompressedLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.DecompressedLength));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Hash));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Data_Hash));
+                        decompressedFile.Write(System.BitConverter.GetBytes(item.Flag));
+                        long pos = decompressedFile.Position;
+                        decompressedFile.Seek(item.Offset - item.HeaderLength, SeekOrigin.Begin);
+                        decompressedFile.Write(item.Header);
+                        decompressedFile.Write(item.Data);
+                        lastBlock = decompressedFile.Position;
+                        decompressedFile.Seek(pos, SeekOrigin.Begin);
                     }
                 }
 
 
-                oldFile.Seek(nextBlockPos, SeekOrigin.Begin);   //Go back to previous nextChunk
+                decompressedFile.Seek(nextBlockPos, SeekOrigin.Begin);   //Go back to previous nextChunk
                 if (chunks.Last() != chunk)
                 {
                     //nextBlockPos = oldFile.Position;
-                    oldFile.Write(System.BitConverter.GetBytes(lastBlock));
+                    decompressedFile.Write(System.BitConverter.GetBytes(lastBlock));
                 }
                 else
-                    oldFile.Write(System.BitConverter.GetBytes(0));
-                oldFile.Seek(lastBlock, SeekOrigin.Begin);
+                    decompressedFile.Write(System.BitConverter.GetBytes(0));
+                decompressedFile.Seek(lastBlock, SeekOrigin.Begin);
 
                 startingBlock = lastBlock;
             }
 
-            oldFile.Close();
+            decompressedFile.Close();
         }
 
         private void Decompress()
