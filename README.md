@@ -51,3 +51,6 @@ This will move all cliloc.* files into **backup** and **gumpartLegacyMUL.uop** i
 ![image](https://github.com/user-attachments/assets/baa1089b-7dc5-4788-9fce-aa349807bb44)
 
 New Files will run with : **Orion/UOFiddler/CUO** (perhaps more)
+
+https://buymeacoffee.com/adverserath
+Or even just say thanks on Discord: adverserath
