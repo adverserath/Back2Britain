@@ -41,7 +41,6 @@ Starting positions of the data dont really matter here, because as long as the s
 
 <H2>Setup</H2>
 First step, make a backup of the entire UO directory first. Its the easiest way to role back if you have issues.
-![image](https://github.com/user-attachments/assets/19b8211d-0891-4e83-a77c-d8e5fe627dbd)
 
 Patch UO:2D by running UOPatch.exe, this will download the latest file.
 
