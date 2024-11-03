@@ -1,4 +1,4 @@
-﻿namespace Back2Britain
+﻿namespace Back2Britain.Utility
 {
     public abstract class FileReader : IDisposable
     {
@@ -8,7 +8,7 @@
         protected FileReader(FileStream stream)
         {
             _stream = stream;
-            Length = stream.Length;       
+            Length = stream.Length;
         }
 
         public long Length { get; }

@@ -1,11 +1,9 @@
 ﻿using Back2Britain.Utility;
-using ClassicUO.IO;
-using ClassicUO.Utility;
-using static System.Reflection.Metadata.BlobBuilder;
+using Back2Britain.IO;
 
-namespace Back2Britain
+namespace Back2Britain.Processors
 {
-    internal class CustomUOFile : FileReader
+    internal class CustomUOFile : Utility.FileReader
     {
         private FileInfo _fileInfo;
         private const uint UOP_MAGIC_NUMBER = 0x50594D;
@@ -45,7 +43,7 @@ namespace Back2Britain
 
         private void FillEntries()
         {
-            Seek(0, System.IO.SeekOrigin.Begin);
+            Seek(0, SeekOrigin.Begin);
 
             if (ReadUInt32() != UOP_MAGIC_NUMBER)
             {
@@ -60,7 +58,7 @@ namespace Back2Britain
             count = ReadInt32();
 
 
-            Seek(nextBlock, System.IO.SeekOrigin.Begin);
+            Seek(nextBlock, SeekOrigin.Begin);
             int total = 0;
             int real_total = 0;
             Loader.NewBar();
@@ -92,33 +90,38 @@ namespace Back2Britain
 
                     var offset_data = offset + headerLength;
 
-                    if (_hasExtra && flag != 3)
+                    if (flag == 0)
+                    {
+                        Loader.NewBar();
+                        throw new Exception($"{_fileInfo.Name} has data which is already decompressed. Skipping File.");
+                    }
+                    else if (_hasExtra && flag != 3)
                     {
                         var pos = Position;
-                        Seek(offset_data, System.IO.SeekOrigin.Begin);
+                        Seek(offset_data, SeekOrigin.Begin);
 
                         var extra1 = ReadInt32();
                         var extra2 = ReadInt32();
                         var buf = ReadBytes(compressedLength - 8);
-                        Seek(pos, System.IO.SeekOrigin.Begin);
+                        Seek(pos, SeekOrigin.Begin);
                         _hashes.Add(hash, new Block(offset, headerLength, compressedLength - 8, decompressedLength, hash, data_hash, flag, [], buf, string.Format(_pattern, real_total - 1), extra1, extra2));
 
                     }
                     else
                     {
-                        long position = base.Position;
-                        Seek(offset, System.IO.SeekOrigin.Begin);
+                        long position = Position;
+                        Seek(offset, SeekOrigin.Begin);
                         var header = ReadBytes(headerLength);
 
                         var buf = ReadBytes(compressedLength);
-                        Seek(position, System.IO.SeekOrigin.Begin);
+                        Seek(position, SeekOrigin.Begin);
 
                         _hashes.Add(hash, new Block(offset_data, headerLength, compressedLength, decompressedLength, hash, data_hash, flag, header, buf, string.Format(_pattern, real_total - 1), 0, 0));
 
                     }
                 }
 
-                Seek(nextBlock, System.IO.SeekOrigin.Begin);
+                Seek(nextBlock, SeekOrigin.Begin);
             } while (nextBlock != 0);
 
         }
@@ -147,15 +150,7 @@ namespace Back2Britain
                 }
                 Block? item = blocks[i];
                 item.Offset = rollingOffset;
-                rollingOffset += (item.HeaderLength + item.CompressedLength);
-                //item.CompressedLength = item.DecompressedLength;
-                //item.Hash = 0;
-                //item.Data_Hash = 0;
-
-                //Try original hash
-                //ulong hash = CreateHash(item.Pattern);
-
-                //item.Hash = hash;
+                rollingOffset += item.HeaderLength + item.CompressedLength;
             }
         }
 
@@ -163,18 +158,17 @@ namespace Back2Britain
         {
 
             block_size = 100;
-            //startingBlock = 2400;
             version = 5;
             string newFileLocation = Path.Combine(_fileInfo.Directory.FullName, _fileInfo.Name);
-            Console.WriteLine($"Writing {newFileLocation}");
+            Console.WriteLine($"{Environment.NewLine}Writing {newFileLocation}");
 
             FileStream decompressedFile = new FileStream(newFileLocation, FileMode.Create);
-            decompressedFile.Write(System.BitConverter.GetBytes(UOP_MAGIC_NUMBER));
-            decompressedFile.Write(System.BitConverter.GetBytes(version));
-            decompressedFile.Write(System.BitConverter.GetBytes(format_timestamp));
-            decompressedFile.Write(System.BitConverter.GetBytes(startingBlock));
-            decompressedFile.Write(System.BitConverter.GetBytes(block_size));
-            decompressedFile.Write(System.BitConverter.GetBytes(count));
+            decompressedFile.Write(BitConverter.GetBytes(UOP_MAGIC_NUMBER));
+            decompressedFile.Write(BitConverter.GetBytes(version));
+            decompressedFile.Write(BitConverter.GetBytes(format_timestamp));
+            decompressedFile.Write(BitConverter.GetBytes(startingBlock));
+            decompressedFile.Write(BitConverter.GetBytes(block_size));
+            decompressedFile.Write(BitConverter.GetBytes(count));
             decompressedFile.Seek(startingBlock, SeekOrigin.Begin);
 
             int batchSize = 100;
@@ -200,49 +194,37 @@ namespace Back2Britain
                 Loader.DisplayLoadingBar("Writing New File ", currentCount++, chunks.Count);
 
                 decompressedFile.Seek(lastBlock, SeekOrigin.Begin);  //Goto chunk start
-                decompressedFile.Write(System.BitConverter.GetBytes(chunk.Count)); //Write Count of chunk
+                decompressedFile.Write(BitConverter.GetBytes(chunk.Count)); //Write Count of chunk
                 if (chunks.Last() != chunk)  //Write last chunk as 0 if end
                 {
                     nextBlockPos = decompressedFile.Position;   //Record placeholder to update next chunk at the end
-                    decompressedFile.Write(System.BitConverter.GetBytes(startingBlock));
+                    decompressedFile.Write(BitConverter.GetBytes(startingBlock));
                 }
                 else
                 {
-                    decompressedFile.Write(System.BitConverter.GetBytes(0));
+                    decompressedFile.Write(BitConverter.GetBytes(0));
                 }
 
                 foreach (Block item in chunk.Blocks)
                 {
-                    if (_hasExtra && item.Flag != 3)
+                    if (item.Flag == 3)
                     {
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Offset));
-                        //oldFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.CompressedLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.DecompressedLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Hash));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Data_Hash));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Flag));
+                        Loader.NewBar();
+                        throw new Exception($"{_fileInfo.Name} has data which is decompressed as flag 3.");
+                    }
+                    else if (_hasExtra && item.Flag != 3)
+                    {
+                        decompressedFile.Write(BitConverter.GetBytes(item.Offset));
+                        decompressedFile.Write(BitConverter.GetBytes(item.HeaderLength));
+                        decompressedFile.Write(BitConverter.GetBytes(item.CompressedLength));
+                        decompressedFile.Write(BitConverter.GetBytes(item.DecompressedLength));
+                        decompressedFile.Write(BitConverter.GetBytes(item.Hash));
+                        decompressedFile.Write(BitConverter.GetBytes(item.Data_Hash));
+                        decompressedFile.Write(BitConverter.GetBytes(item.Flag));
                         long pos = decompressedFile.Position;
                         decompressedFile.Seek(item.Offset + item.HeaderLength, SeekOrigin.Begin);
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Extra1));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Extra2));
-                        decompressedFile.Write(item.Data);
-                        lastBlock = decompressedFile.Position;
-                        decompressedFile.Seek(pos, SeekOrigin.Begin);
-                    }
-                    else
-                    {
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Offset - item.HeaderLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.HeaderLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.CompressedLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.DecompressedLength));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Hash));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Data_Hash));
-                        decompressedFile.Write(System.BitConverter.GetBytes(item.Flag));
-                        long pos = decompressedFile.Position;
-                        decompressedFile.Seek(item.Offset - item.HeaderLength, SeekOrigin.Begin);
-                        decompressedFile.Write(item.Header);
+                        decompressedFile.Write(BitConverter.GetBytes(item.Extra1));
+                        decompressedFile.Write(BitConverter.GetBytes(item.Extra2));
                         decompressedFile.Write(item.Data);
                         lastBlock = decompressedFile.Position;
                         decompressedFile.Seek(pos, SeekOrigin.Begin);
@@ -254,10 +236,10 @@ namespace Back2Britain
                 if (chunks.Last() != chunk)
                 {
                     //nextBlockPos = oldFile.Position;
-                    decompressedFile.Write(System.BitConverter.GetBytes(lastBlock));
+                    decompressedFile.Write(BitConverter.GetBytes(lastBlock));
                 }
                 else
-                    decompressedFile.Write(System.BitConverter.GetBytes(0));
+                    decompressedFile.Write(BitConverter.GetBytes(0));
                 decompressedFile.Seek(lastBlock, SeekOrigin.Begin);
 
                 startingBlock = lastBlock;
@@ -268,36 +250,39 @@ namespace Back2Britain
 
         private void Decompress()
         {
+            int totalItems = _hashes.Count;
             int current = 0;
             Loader.NewBar();
-            foreach (var item in _hashes.Values)
+
+            Parallel.ForEach(_hashes.Values, (item) =>
             {
-                current++;
-                Loader.DisplayLoadingBar("Decompressing ", current, _hashes.Count);
+                int localCurrent = Interlocked.Increment(ref current);
+                Loader.DisplayLoadingBar("Decompressing", localCurrent, totalItems);
 
-                var bwtDecoded = new byte[item.DecompressedLength];
-                var result = ZLib.Decompress(item.Data, bwtDecoded);
+                try
+                {
+                    byte[] bwtDecoded = new byte[item.DecompressedLength];
 
-                int destLength = 0;
-                var compressedNoBwt = new byte[item.DecompressedLength];
-                bwtDecoded = Utility.BwtDecompress.Decompress(bwtDecoded);
+                    ZLib.Decompress(item.Data, bwtDecoded);
 
-                //var compressed = ZLib.Compress(bwtDecoded, compressedNoBwt);
+                    byte[] decompressedData = Utility.BwtDecompress.Decompress(bwtDecoded);
 
-                StackDataReader reader = new StackDataReader(bwtDecoded);
-                uint w = reader.ReadUInt32LE();
-                uint h = reader.ReadUInt32LE();
-                byte[] data = reader.ReadArray(reader.Remaining);
-                item.Extra1 = (int)w;
-                item.Extra2 = (int)h;
+                    StackDataReader reader = new StackDataReader(decompressedData);
+                    item.Extra1 = (int)reader.ReadUInt32LE();  // Width
+                    item.Extra2 = (int)reader.ReadUInt32LE();  // Height
+                    item.Data = reader.ReadArray(reader.Remaining);
 
-                //var compressedShort = TrimEnd(bwtDecoded);
-                item.Data = data;
-                item.CompressedLength = bwtDecoded.Length; //Add 8 for w+h
-                item.DecompressedLength = bwtDecoded.Length;
-                item.Flag = 0;
-            }
+                    item.CompressedLength = decompressedData.Length;
+                    item.DecompressedLength = decompressedData.Length;
+                    item.Flag = 0;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error decompressing item: {ex.Message}");
+                }
+            });
         }
+
         public static byte[] TrimEnd(byte[] array)
         {
             int lastIndex = Array.FindLastIndex(array, b => b != 0);
@@ -315,20 +300,20 @@ namespace Back2Britain
 
             for (i = 0; i + 12 < s.Length; i += 12)
             {
-                edi = (uint)((s[i + 7] << 24) | (s[i + 6] << 16) | (s[i + 5] << 8) | s[i + 4]) + edi;
-                esi = (uint)((s[i + 11] << 24) | (s[i + 10] << 16) | (s[i + 9] << 8) | s[i + 8]) + esi;
-                edx = (uint)((s[i + 3] << 24) | (s[i + 2] << 16) | (s[i + 1] << 8) | s[i]) - esi;
-                edx = (edx + ebx) ^ (esi >> 28) ^ (esi << 4);
+                edi = (uint)(s[i + 7] << 24 | s[i + 6] << 16 | s[i + 5] << 8 | s[i + 4]) + edi;
+                esi = (uint)(s[i + 11] << 24 | s[i + 10] << 16 | s[i + 9] << 8 | s[i + 8]) + esi;
+                edx = (uint)(s[i + 3] << 24 | s[i + 2] << 16 | s[i + 1] << 8 | s[i]) - esi;
+                edx = edx + ebx ^ esi >> 28 ^ esi << 4;
                 esi += edi;
-                edi = (edi - edx) ^ (edx >> 26) ^ (edx << 6);
+                edi = edi - edx ^ edx >> 26 ^ edx << 6;
                 edx += esi;
-                esi = (esi - edi) ^ (edi >> 24) ^ (edi << 8);
+                esi = esi - edi ^ edi >> 24 ^ edi << 8;
                 edi += edx;
-                ebx = (edx - esi) ^ (esi >> 16) ^ (esi << 16);
+                ebx = edx - esi ^ esi >> 16 ^ esi << 16;
                 esi += edi;
-                edi = (edi - ebx) ^ (ebx >> 13) ^ (ebx << 19);
+                edi = edi - ebx ^ ebx >> 13 ^ ebx << 19;
                 ebx += esi;
-                esi = (esi - edi) ^ (edi >> 28) ^ (edi << 4);
+                esi = esi - edi ^ edi >> 28 ^ edi << 4;
                 edi += ebx;
             }
 
@@ -386,18 +371,18 @@ namespace Back2Britain
                         break;
                 }
 
-                esi = (esi ^ edi) - ((edi >> 18) ^ (edi << 14));
-                ecx = (esi ^ ebx) - ((esi >> 21) ^ (esi << 11));
-                edi = (edi ^ ecx) - ((ecx >> 7) ^ (ecx << 25));
-                esi = (esi ^ edi) - ((edi >> 16) ^ (edi << 16));
-                edx = (esi ^ ecx) - ((esi >> 28) ^ (esi << 4));
-                edi = (edi ^ edx) - ((edx >> 18) ^ (edx << 14));
-                eax = (esi ^ edi) - ((edi >> 8) ^ (edi << 24));
+                esi = (esi ^ edi) - (edi >> 18 ^ edi << 14);
+                ecx = (esi ^ ebx) - (esi >> 21 ^ esi << 11);
+                edi = (edi ^ ecx) - (ecx >> 7 ^ ecx << 25);
+                esi = (esi ^ edi) - (edi >> 16 ^ edi << 16);
+                edx = (esi ^ ecx) - (esi >> 28 ^ esi << 4);
+                edi = (edi ^ edx) - (edx >> 18 ^ edx << 14);
+                eax = (esi ^ edi) - (edi >> 8 ^ edi << 24);
 
-                return ((ulong)edi << 32) | eax;
+                return (ulong)edi << 32 | eax;
             }
 
-            return ((ulong)esi << 32) | eax;
+            return (ulong)esi << 32 | eax;
         }
     }
 

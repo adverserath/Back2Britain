@@ -6,6 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<Version>1.1</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>none</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,21 +23,13 @@
 
   <ItemGroup>
     <EmbeddedResource Include="zlib.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="ClassicUO.IO">
-      <HintPath>..\..\ClassicUO\bin\Debug\net8.0\ClassicUO.IO.dll</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="ClassicUO.Utility">
-      <HintPath>..\..\ClassicUO\src\ClassicUO.Utility\bin\Debug\net8.0\ClassicUO.Utility.dll</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-      <Private>True</Private>
-    </Reference>
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
+
 
 </Project>
